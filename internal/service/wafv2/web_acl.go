@@ -493,28 +493,31 @@ func findWebACLByThreePartKey(ctx context.Context, conn *wafv2.Client, id, name,
 func filterWebACLRules(rules, configRules []awstypes.Rule) []awstypes.Rule {
 	var fr []awstypes.Rule
 	sr := findShieldRule(rules)
+	sr_config := findShieldRule(configRules)
 
+	filter := true
 	if len(sr) == 0 {
-		return rules
+		filter = false
 	}
 
-	for _, r := range rules {
+	for _, r := range sr_config {
 		if aws.ToString(r.Name) == aws.ToString(sr[0].Name) {
-			filter := true
-			for _, cr := range configRules {
-				if aws.ToString(cr.Name) == aws.ToString(r.Name) {
-					// exception to filtering -- it's in the config
-					filter = false
-				}
-			}
+			filter = false
+		}
+	}
 
-			if filter {
+	if filter {
+		for _, r := range rules {
+			if aws.ToString(r.Name) == aws.ToString(sr[0].Name) {
 				continue
+			} else {
+				fr = append(fr, r)
 			}
 		}
-		fr = append(fr, r)
+		return fr
+	} else {
+		return rules
 	}
-	return fr
 }
 
 func findShieldRule(rules []awstypes.Rule) []awstypes.Rule {
